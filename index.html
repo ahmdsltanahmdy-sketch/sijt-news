@@ -7,43 +7,30 @@
   <title>خبرگزاری میزان | پیشخوان هوشمند</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    :root[data-theme="mizan-red"] {
-      --bg: #f4f5f8;
+    :root {
+      --bg: #f5f6f8;
       --card-bg: #ffffff;
-      --header-bg: #900000;
+      --header-bg: #990000;
       --text: #1a202c;
-      --text-muted: #64748b;
+      --text-muted: #718096;
       --accent: #b91c1c;
-      --accent-grad: linear-gradient(135deg, #990000, #dc2626);
+      --accent-grad: linear-gradient(135deg, #990000, #c53030);
       --border: #e2e8f0;
       --pill: rgba(185, 28, 28, 0.08);
       --card-shadow: 0 2px 6px rgba(0,0,0,0.05);
     }
-    :root[data-theme="dark"] {
-      --bg: #0b111e;
+    [data-theme="dark"] {
+      --bg: #0d131f;
       --card-bg: #162032;
-      --header-bg: #101726;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
+      --header-bg: #111a2b;
+      --text: #f7fafc;
+      --text-muted: #a0aec0;
       --accent: #38bdf8;
       --accent-grad: linear-gradient(135deg, #0284c7, #38bdf8);
       --border: rgba(255, 255, 255, 0.08);
       --pill: rgba(56, 189, 248, 0.12);
       --card-shadow: 0 4px 12px rgba(0,0,0,0.25);
     }
-    :root[data-theme="amoled"] {
-      --bg: #000000;
-      --card-bg: #0a0a0a;
-      --header-bg: #000000;
-      --text: #ffffff;
-      --text-muted: #888888;
-      --accent: #ef4444;
-      --accent-grad: linear-gradient(135deg, #b91c1c, #ef4444);
-      --border: #222222;
-      --pill: rgba(239, 68, 68, 0.15);
-      --card-shadow: none;
-    }
-
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Vazirmatn", Tahoma, sans-serif;
@@ -54,11 +41,8 @@
       min-height: 100vh;
       font-size: 13.5px;
       line-height: 1.5;
-      transition: background-color 0.2s ease, color 0.2s ease;
     }
-
-    /* هدر */
-    .top-header {
+    .header {
       position: sticky;
       top: 0;
       z-index: 200;
@@ -68,25 +52,20 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
     }
-    .brand-title { font-size: 1.05rem; font-weight: 800; }
-    .brand-status { font-size: 0.65rem; opacity: 0.85; display: block; }
-    .hdr-actions { display: flex; gap: 6px; }
-    .btn-h {
+    .header-title { font-size: 1.05rem; font-weight: 800; }
+    .header-sub { font-size: 0.65rem; opacity: 0.85; display: block; }
+    .hdr-btn {
       background: rgba(255, 255, 255, 0.2);
       border: 1px solid rgba(255, 255, 255, 0.3);
       color: #fff;
-      padding: 5px 10px;
+      padding: 5px 12px;
       border-radius: 16px;
       font-size: 0.72rem;
       cursor: pointer;
-      font-family: inherit;
       font-weight: 600;
+      font-family: inherit;
     }
-    .btn-h:active { transform: scale(0.95); }
-
-    /* تب‌های موضوعی */
     .tabs-bar {
       position: sticky;
       top: 52px;
@@ -113,23 +92,16 @@
       white-space: nowrap;
       cursor: pointer;
       font-family: inherit;
-      transition: all 0.15s ease;
     }
     .tab-btn.active {
       background: var(--accent-grad);
       color: #ffffff;
       border-color: transparent;
-      transform: translateY(-1px);
     }
-
-    /* نوار ابزار */
-    .tool-bar {
+    .search-box {
       padding: 8px 12px 2px 12px;
-      display: flex;
-      gap: 8px;
     }
-    .search-wrap {
-      flex: 1;
+    .search-inner {
       display: flex;
       align-items: center;
       background: var(--card-bg);
@@ -138,7 +110,7 @@
       padding: 6px 10px;
       gap: 6px;
     }
-    .search-wrap input {
+    .search-inner input {
       background: transparent;
       border: none;
       outline: none;
@@ -147,25 +119,12 @@
       font-size: 0.82rem;
       width: 100%;
     }
-    .sort-btn {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      border-radius: 10px;
-      padding: 0 10px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: inherit;
-    }
-
-    /* لیست اخبار */
-    .feed-container {
+    .feed {
       padding: 8px 12px;
       max-width: 680px;
       margin: 0 auto;
     }
-    .card-item {
+    .card {
       background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: 12px;
@@ -249,64 +208,7 @@
       padding: 2px 6px;
       font-family: inherit;
     }
-    .act-btn:active { color: var(--accent); }
-
-    /* مودال مطالعه خبر درون اپلیکیشن */
-    .reader-modal {
-      position: fixed;
-      inset: 0;
-      background: var(--bg);
-      z-index: 400;
-      display: none;
-      flex-direction: column;
-      overflow-y: auto;
-    }
-    .reader-modal.active { display: flex; }
-    .reader-header {
-      position: sticky;
-      top: 0;
-      background: var(--card-bg);
-      border-bottom: 1px solid var(--border);
-      padding: 10px 14px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      z-index: 10;
-    }
-    .reader-body {
-      padding: 16px;
-      max-width: 680px;
-      margin: 0 auto;
-      width: 100%;
-    }
-    .reader-img {
-      width: 100%;
-      max-height: 280px;
-      object-fit: cover;
-      border-radius: 10px;
-      margin-bottom: 14px;
-    }
-    .reader-title {
-      font-size: 1.1rem;
-      font-weight: 800;
-      line-height: 1.45;
-      margin-bottom: 10px;
-    }
-    .reader-meta {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      margin-bottom: 14px;
-      display: flex;
-      gap: 12px;
-    }
-    .reader-text {
-      font-size: 0.9rem;
-      line-height: 1.7;
-      color: var(--text);
-    }
-
-    /* نوار پایین */
-    .bottom-nav {
+    .nav-bar {
       position: fixed;
       bottom: 0;
       left: 0;
@@ -319,7 +221,7 @@
       align-items: center;
       z-index: 300;
     }
-    .nav-btn {
+    .nav-item {
       background: none;
       border: none;
       color: var(--text-muted);
@@ -332,30 +234,8 @@
       flex: 1;
       font-family: inherit;
     }
-    .nav-btn.active { color: var(--accent); font-weight: 700; }
-    .nav-btn .icon { font-size: 1.15rem; }
-
-    /* اسکلتون لودینگ */
-    .skeleton-box {
-      background: var(--card-bg);
-      border-radius: 12px;
-      padding: 10px;
-      margin-bottom: 10px;
-      display: flex;
-      gap: 10px;
-      border: 1px solid var(--border);
-    }
-    .sk-t {
-      width: 95px;
-      height: 80px;
-      border-radius: 8px;
-      background: rgba(160, 174, 192, 0.15);
-      animation: pulse 1s infinite ease-in-out;
-    }
-    .sk-c { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; }
-    .sk-l { height: 10px; border-radius: 5px; background: rgba(160, 174, 192, 0.15); animation: pulse 1s infinite ease-in-out; }
-    @keyframes pulse { 0% { opacity: 0.3; } 50% { opacity: 0.7; } 100% { opacity: 0.3; } }
-
+    .nav-item.active { color: var(--accent); font-weight: 700; }
+    .nav-item .icon { font-size: 1.15rem; }
     .toast {
       position: fixed;
       bottom: 70px;
@@ -374,16 +254,16 @@
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   </style>
 </head>
-<body data-theme="mizan-red">
+<body>
 
-  <header class="top-header">
+  <header class="header">
     <div>
-      <div class="brand-title">خبرگزاری میزان</div>
-      <span class="brand-status" id="clock-status">آماده دریافت</span>
+      <div class="header-title">خبرگزاری میزان</div>
+      <span class="header-sub" id="clock-status">در حال دریافت اخبار...</span>
     </div>
-    <div class="hdr-actions">
-      <button class="btn-h" onclick="manualSync()">🔄 تازه‌سازی</button>
-      <button class="btn-h" onclick="toggleTheme()">🎨 <span id="lbl-theme">میزان</span></button>
+    <div style="display:flex;gap:6px;">
+      <button class="hdr-btn" onclick="syncData()">🔄 تازه‌سازی</button>
+      <button class="hdr-btn" onclick="toggleTheme()">🎨 تم</button>
     </div>
   </header>
 
@@ -403,54 +283,33 @@
     </div>
   </nav>
 
-  <div class="tool-bar" id="toolBar">
-    <div class="search-wrap">
+  <div class="search-box" id="searchBox">
+    <div class="search-inner">
       <span>🔍</span>
-      <input type="text" id="searchInput" placeholder="جستجوی آنی در اخبار..." oninput="filterData(this.value)" />
+      <input type="text" id="searchInput" placeholder="جستجوی سریع در سرتیترها..." oninput="searchNews(this.value)" />
     </div>
-    <button class="sort-btn" onclick="toggleSort()">
-      <span>⇅</span>
-      <span id="lbl-sort">جدیدترین</span>
-    </button>
   </div>
 
-  <main class="feed-container" id="feedList">
-    <div class="skeleton-box"><div class="sk-t"></div><div class="sk-c"><div class="sk-l" style="width:85%;"></div><div class="sk-l" style="width:60%;"></div></div></div>
-    <div class="skeleton-box"><div class="sk-t"></div><div class="sk-c"><div class="sk-l" style="width:75%;"></div><div class="sk-l" style="width:50%;"></div></div></div>
+  <main class="feed" id="feedList">
+    <div style="text-align:center;padding:50px 20px;color:var(--text-muted);">در حال همگام‌سازی لحظه‌ای اخبار...</div>
   </main>
-
-  <div class="reader-modal" id="readerModal">
-    <div class="reader-header">
-      <button class="btn-h" style="background:var(--accent);color:#fff;" onclick="closeReader()">بازگشت ✕</button>
-      <button class="btn-h" style="background:transparent;color:var(--text);border-color:var(--border);" onclick="openExternalFromReader()">سایت اصلی ↗</button>
-    </div>
-    <div class="reader-body">
-      <img id="readerImg" class="reader-img" src="" alt="تصویر خبر" onerror="this.style.display='none';" />
-      <h2 id="readerTitle" class="reader-title"></h2>
-      <div class="reader-meta">
-        <span id="readerDate"></span>
-        <span>خبرگزاری میزان</span>
-      </div>
-      <div id="readerText" class="reader-text"></div>
-    </div>
-  </div>
 
   <div class="toast" id="toastBox">پیام</div>
 
-  <footer class="bottom-nav">
-    <button class="nav-btn active" id="btn-home" onclick="setScreen('home')">
+  <footer class="nav-bar">
+    <button class="nav-item active" id="btn-home" onclick="setScreen('home')">
       <span class="icon">📰</span>
       <span>پیشخوان</span>
     </button>
-    <button class="nav-btn" id="btn-fav" onclick="setScreen('fav')">
+    <button class="nav-item" id="btn-fav" onclick="setScreen('fav')">
       <span class="icon">⭐</span>
       <span>نشان‌شده‌ها</span>
     </button>
-    <button class="nav-btn" onclick="manualSync()">
+    <button class="nav-item" onclick="syncData()">
       <span class="icon">🔄</span>
       <span>تازه‌سازی فوری</span>
     </button>
-    <button class="nav-btn" onclick="openDirect('https://www.mizanonline.ir/fa/archive')">
+    <button class="nav-item" onclick="openLink('https://www.mizanonline.ir/fa/archive')">
       <span class="icon">🌐</span>
       <span>سایت اصلی</span>
     </button>
@@ -474,29 +333,10 @@
       photos: '4'
     };
 
-    const THEMES = ['mizan-red', 'dark', 'amoled'];
-    const THEME_NAMES = { 'mizan-red': 'میزان', 'dark': 'تاریک', 'amoled': 'مشکی' };
-
-    let currentTheme = localStorage.getItem('mizan_theme_final') || 'mizan-red';
     let currentCat = 'all';
     let currentScreen = 'home';
-    let isSortAsc = false;
-    let activeNews = [];
-    let currentReading = null;
-    let bookmarks = JSON.parse(localStorage.getItem('mizan_favs_final') || '[]');
-
-    function applyTheme(t) {
-      document.body.setAttribute('data-theme', t);
-      localStorage.setItem('mizan_theme_final', t);
-      document.getElementById('lbl-theme').innerText = THEME_NAMES[t] || t;
-    }
-
-    function toggleTheme() {
-      const idx = (THEMES.indexOf(currentTheme) + 1) % THEMES.length;
-      currentTheme = THEMES[idx];
-      applyTheme(currentTheme);
-      showToast(`تم ${THEME_NAMES[currentTheme]}`);
-    }
+    let loadedNews = [];
+    let bookmarks = JSON.parse(localStorage.getItem('mizan_bookmarks') || '[]');
 
     function showToast(msg) {
       const t = document.getElementById('toastBox');
@@ -505,68 +345,83 @@
       setTimeout(() => t.classList.remove('show'), 2000);
     }
 
-    function cleanSnippet(txt) {
-      if (!txt) return '';
-      const doc = new DOMParser().parseFromString(txt, 'text/html');
-      return (doc.body.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 115) + '...';
+    function toggleTheme() {
+      const isDark = document.body.getAttribute('data-theme') === 'dark';
+      document.body.setAttribute('data-theme', isDark ? 'mizan-red' : 'dark');
+      showToast(isDark ? 'تم قرمز میزان' : 'تم تاریک');
     }
 
+    // استخراج دقیق تصویر بدون مسدودی سرور
     function extractImage(description, itemNode) {
+      // 1. بررسی تگ استاندارد enclosure
       if (itemNode) {
         const enc = itemNode.querySelector('enclosure');
-        if (enc && enc.getAttribute('url')) return enc.getAttribute('url');
+        if (enc && enc.getAttribute('url')) {
+          return enc.getAttribute('url');
+        }
       }
+      // 2. استخراج از داخل متن description
       if (description) {
         const match = description.match(/src=["']([^"']+\.(?:jpg|jpeg|png|webp)[^"']*)["']/i);
-        if (match && match[1]) return match[1];
+        if (match && match[1]) {
+          return match[1];
+        }
       }
       return null;
     }
 
-    async function fetchLiveNews(cat) {
-      const clock = document.getElementById('clock-status');
-      clock.innerText = 'همگام‌سازی زنده...';
+    function cleanSnippet(txt) {
+      if (!txt) return '';
+      const doc = new DOMParser().parseFromString(txt, 'text/html');
+      return (doc.body.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 110) + '...';
+    }
 
-      // نمایش کش محلی بلادرنگ جهت حذف کامل تاخیر
-      const local = localStorage.getItem(`cache_final_${cat}`);
-      if (local && activeNews.length === 0) {
-        try {
-          activeNews = JSON.parse(local);
-          renderList(activeNews);
-        } catch(e) {}
-      }
+    // موتور واکشی مستقیم و چندمسیری با زمان لحظه‌ای (رفع کش ۸:۴۵)
+    async function fetchFreshNews(cat) {
+      const clock = document.getElementById('clock-status');
+      clock.innerText = 'در حال ارتباط زنده...';
 
       const feedCode = CATEGORIES[cat] || 'allnews';
-      const rawRss = `https://www.mizanonline.ir/fa/rss/${feedCode}`;
-      const nocacheParam = `_t=${Date.now()}&_r=${Math.random()}`;
-
-      // پروکسی‌های بدون کش
-      const endpoints = [
-        `https://corsproxy.io/?url=${encodeURIComponent(rawRss + '?' + nocacheParam)}`,
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(rawRss + '?' + nocacheParam)}`
+      const rawRssUrl = `https://www.mizanonline.ir/fa/rss/${feedCode}`;
+      
+      // افزودن زمان فعلی به میلی‌ثانیه برای دور زدن کش سرورهای واسط
+      const nocacheParam = `_t=${Date.now()}&_rand=${Math.random()}`;
+      
+      // استفاده از پایپ‌های باز و پروکسی‌های اختصاصی با متد مستقیم GET
+      const sources = [
+        `https://corsproxy.io/?url=${encodeURIComponent(rawRssUrl + '?' + nocacheParam)}`,
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(rawRssUrl + '?' + nocacheParam)}`,
+        `https://proxy.cors.sh/${rawRssUrl}?${nocacheParam}`
       ];
 
       let rawXml = null;
 
-      for (const ep of endpoints) {
+      for (const endpoint of sources) {
         try {
           const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 3500);
-          const res = await fetch(ep, {
+          const timer = setTimeout(() => controller.abort(), 4000);
+          
+          const res = await fetch(endpoint, { 
             signal: controller.signal,
             cache: 'no-store',
             headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
           });
           clearTimeout(timer);
+
           if (res.ok) {
             rawXml = await res.text();
-            if (rawXml && rawXml.includes('<item>')) break;
+            if (rawXml && rawXml.includes('<item>')) {
+              break;
+            }
           }
-        } catch(e) {}
+        } catch (e) {
+          console.warn("Retrying with next live pipeline...");
+        }
       }
 
       if (!rawXml || !rawXml.includes('<item>')) {
-        clock.innerText = 'خطای موقت شبکه';
+        clock.innerText = 'خطای ارتباط با سرور';
+        showToast('امکان دریافت داده از خبرگزاری فراهم نشد.');
         return;
       }
 
@@ -580,7 +435,9 @@
           const link = node.querySelector('link')?.textContent?.trim() || '';
           const desc = node.querySelector('description')?.textContent || '';
           const pubDate = node.querySelector('pubDate')?.textContent || '';
-          const time = pubDate.split(' ')[4] || pubDate.split(' ')[1] || 'ساعات قبل';
+          
+          // تنظیم فرمت نمایش ساعت دقیق خبر
+          const time = pubDate.split(' ')[4] || pubDate.split(' ')[1] || 'لحظاتی پیش';
 
           if (title && link) {
             list.push({
@@ -594,14 +451,14 @@
         });
 
         if (list.length > 0) {
-          activeNews = list;
-          localStorage.setItem(`cache_final_${cat}`, JSON.stringify(activeNews));
-          renderList(activeNews);
+          loadedNews = list;
+          renderList(loadedNews);
           const now = new Date();
-          clock.innerText = `بروزرسانی: ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+          clock.innerText = `بروز شده: ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+          showToast('اخبار زنده دریافت شد');
         }
       } catch (err) {
-        clock.innerText = 'خطای پردازش';
+        clock.innerText = 'خطای پردازش اخبار';
       }
     }
 
@@ -610,19 +467,19 @@
       container.innerHTML = '';
 
       if (!list || list.length === 0) {
-        container.innerHTML = '<div style="text-align:center;padding:50px;color:var(--text-muted);">خبری یافت نشد.</div>';
+        container.innerHTML = '<div style="text-align:center;padding:50px;color:var(--text-muted);">خبری پیدا نشد.</div>';
         return;
       }
 
       list.forEach(item => {
         const isFav = bookmarks.some(b => b.link === item.link);
         const card = document.createElement('div');
-        card.className = 'card-item';
+        card.className = 'card';
         card.innerHTML = `
-          <div class="card-touch" onclick="openReader('${encodeURIComponent(JSON.stringify(item))}')">
+          <div class="card-touch" onclick="openLink('${item.link}')">
             <div class="img-wrap">
               ${item.image ? 
-                `<img src="${item.image}" alt="خبر" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+                `<img src="${item.image}" alt="تصویر خبر" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
                  <span class="img-fallback" style="display:none;">⚖️</span>`
                 : `<span class="img-fallback" style="display:block;">⚖️</span>`
               }
@@ -648,49 +505,17 @@
       });
     }
 
-    function openReader(enc) {
-      currentReading = JSON.parse(decodeURIComponent(enc));
-      const m = document.getElementById('readerModal');
-      document.getElementById('readerTitle').innerText = currentReading.title;
-      document.getElementById('readerDate').innerText = `🕒 ${currentReading.pubDate}`;
-      document.getElementById('readerText').innerText = currentReading.snippet;
-
-      const imgEl = document.getElementById('readerImg');
-      if (currentReading.image) {
-        imgEl.src = currentReading.image;
-        imgEl.style.display = 'block';
-      } else {
-        imgEl.style.display = 'none';
-      }
-      m.classList.add('active');
-    }
-
-    function closeReader() {
-      document.getElementById('readerModal').classList.remove('active');
-    }
-
-    function openExternalFromReader() {
-      if (currentReading && currentReading.link) openDirect(currentReading.link);
-    }
-
-    function filterData(query) {
+    function searchNews(query) {
       if (!query || query.trim() === '') {
-        renderList(activeNews);
+        renderList(loadedNews);
         return;
       }
       const q = query.toLowerCase().trim();
-      const filtered = activeNews.filter(i => i.title.toLowerCase().includes(q) || i.snippet.toLowerCase().includes(q));
+      const filtered = loadedNews.filter(i => i.title.toLowerCase().includes(q) || i.snippet.toLowerCase().includes(q));
       renderList(filtered);
     }
 
-    function toggleSort() {
-      isSortAsc = !isSortAsc;
-      document.getElementById('lbl-sort').innerText = isSortAsc ? 'قدیمی‌ترین' : 'جدیدترین';
-      activeNews.reverse();
-      renderList(activeNews);
-    }
-
-    function openDirect(url) {
+    function openLink(url) {
       if (tg && tg.openLink) { tg.openLink(url); } else { window.open(url, '_blank'); }
     }
 
@@ -709,8 +534,8 @@
         bookmarks.push(item);
         showToast('به نشان‌شده‌ها اضافه شد');
       }
-      localStorage.setItem('mizan_favs_final', JSON.stringify(bookmarks));
-      if (currentScreen === 'fav') renderBookmarks(); else renderList(activeNews);
+      localStorage.setItem('mizan_bookmarks', JSON.stringify(bookmarks));
+      if (currentScreen === 'fav') renderBookmarks(); else renderList(loadedNews);
     }
 
     function renderBookmarks() {
@@ -725,28 +550,29 @@
 
     function setScreen(s) {
       currentScreen = s;
-      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
       const tabs = document.getElementById('tabsBar');
-      const tool = document.getElementById('toolBar');
+      const search = document.getElementById('searchBox');
 
       if (s === 'home') {
         document.getElementById('btn-home').classList.add('active');
         tabs.style.display = 'block';
-        tool.style.display = 'flex';
-        renderList(activeNews);
+        search.style.display = 'block';
+        renderList(loadedNews);
       } else {
         document.getElementById('btn-fav').classList.add('active');
         tabs.style.display = 'none';
-        tool.style.display = 'none';
+        search.style.display = 'none';
         renderBookmarks();
       }
     }
 
-    function manualSync() {
-      showToast('دریافت اخبار زنده...');
-      fetchLiveNews(currentCat);
+    function syncData() {
+      showToast('بروزرسانی زنده...');
+      fetchFreshNews(currentCat);
     }
 
+    // لیسنر تب‌های موضوعی
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', function() {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -754,16 +580,15 @@
         currentCat = this.dataset.cat;
         document.getElementById('searchInput').value = '';
         this.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-        fetchLiveNews(currentCat);
+        fetchFreshNews(currentCat);
       });
     });
 
-    applyTheme(currentTheme);
-    fetchLiveNews(currentCat);
-
+    // شروع و بروزرسانی خودکار هر ۳ دقیقه
+    fetchFreshNews(currentCat);
     setInterval(() => {
-      if (currentScreen === 'home') fetchLiveNews(currentCat);
-    }, 2 * 60 * 1000);
+      if (currentScreen === 'home') fetchFreshNews(currentCat);
+    }, 3 * 60 * 1000);
   </script>
 </body>
 </html>
