@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="referrer" content="no-referrer">
-  <title>خبرگزاری میزان | پیشخوان هوشمند</title>
+  <title>خبرگزاری میزان | پیشخوان لحظه‌ای</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     :root {
@@ -399,9 +399,9 @@
     </div>
 
     <main class="feed-container" id="feedList">
-      <div style="text-align:center;padding:50px;color:var(--text-muted);">در حال بارگذاری اخبار زنده...</div>
+      <div style="text-align:center;padding:50px;color:var(--text-muted);">در حال دریافت جدیدترین اخبار...</div>
     </main>
-    <div class="scroll-loader" id="scrollLoader" style="display:none;">در حال بارگذاری اخبار بیشتر...</div>
+    <div class="scroll-loader" id="scrollLoader" style="display:none;">در حال اسکرول به اخبار گذشته...</div>
 
     <div class="reader-modal" id="readerModal">
       <div class="reader-header">
@@ -445,7 +445,6 @@
     const tg = window.Telegram.WebApp;
     if (tg) { tg.ready(); tg.expand(); }
 
-    // آدرس وب‌اپ متصل به گوگل اسکریپت اختصاصی شما
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzFkZiDMyBMWfjncEq4aYkSX6N1SjJCPBQm-hMOTWi6H7O8ja_e3bkTvr4hFNq2krZd/exec";
 
     let currentCat = 'allnews';
@@ -469,75 +468,48 @@
       showToast(isDark ? 'تم قرمز میزان' : 'تم تاریک');
     }
 
-    function cleanSnippet(txt) {
-      if (!txt) return '';
-      const doc = new DOMParser().parseFromString(txt, 'text/html');
-      return (doc.body.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 120) + '...';
-    }
-
-    function extractImage(desc, itemXml) {
-      if (itemXml) {
-        const enc = itemXml.querySelector('enclosure');
-        if (enc && enc.getAttribute('url')) return enc.getAttribute('url');
-      }
-      if (desc) {
-        const m = desc.match(/src=["']([^"']+\.(?:jpg|jpeg|png|webp)[^"']*)["']/i);
-        if (m && m[1]) return m[1];
-      }
-      return null;
-    }
-
     async function fetchLiveNews(cat) {
       const clock = document.getElementById('clock-status');
-      clock.innerText = 'همگام‌سازی لحظه‌ای...';
+      clock.innerText = 'همگام‌سازی...';
+
+      // نمایش کش قبلی برای لود آنی بدون انتظار کاربر
+      const cached = localStorage.getItem(`cache_${cat}`);
+      if (cached && allNewsItems.length === 0) {
+        try {
+          allNewsItems = JSON.parse(cached);
+          renderFeedList();
+        } catch(e) {}
+      }
 
       try {
-        const fetchUrl = `${GOOGLE_SCRIPT_URL}?cat=${cat}&_t=${Date.now()}`;
-        const res = await fetch(fetchUrl);
-        const xmlText = await res.text();
+        // جلوگیری از کش مرورگر با شناسه میلی‌ثانیه‌ای رندوم
+        const fetchUrl = `${GOOGLE_SCRIPT_URL}?cat=${cat}&_t=${Date.now()}&_r=${Math.random()}`;
+        const res = await fetch(fetchUrl, { cache: 'no-store' });
+        const data = await res.json();
 
-        const xmlDoc = new DOMParser().parseFromString(xmlText, 'text/xml');
-        const items = xmlDoc.querySelectorAll('item');
-        const list = [];
-
-        items.forEach(node => {
-          const title = node.querySelector('title')?.textContent?.trim() || '';
-          const link = node.querySelector('link')?.textContent?.trim() || '';
-          const desc = node.querySelector('description')?.textContent || '';
-          const pubDate = node.querySelector('pubDate')?.textContent || '';
-          const time = pubDate.split(' ')[4] || pubDate.split(' ')[1] || 'لحظاتی قبل';
-
-          if (title && link) {
-            list.push({
-              title,
-              link,
-              pubDate: time,
-              snippet: cleanSnippet(desc),
-              image: extractImage(desc, node)
-            });
-          }
-        });
-
-        if (list.length > 0) {
-          allNewsItems = list;
+        if (data && data.status === "ok" && data.items && data.items.length > 0) {
+          allNewsItems = data.items;
+          localStorage.setItem(`cache_${cat}`, JSON.stringify(allNewsItems));
           displayedCount = 10;
           renderFeedList();
           const d = new Date();
           clock.innerText = `بروزرسانی: ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
-          showToast('جدیدترین اخبار دریافت شد');
+          showToast('اخبار زنده همگام شد');
           return;
         }
       } catch (err) {
         console.error(err);
       }
 
-      clock.innerText = 'خطای اتصال';
-      document.getElementById('feedList').innerHTML = `
-        <div style="text-align:center;padding:50px 20px;color:var(--text-muted);">
-          <p>امکان دریافت داده وجود ندارد.</p>
-          <button class="btn-h" style="background:var(--accent);margin-top:12px;" onclick="manualSync()">تلاش مجدد 🔄</button>
-        </div>
-      `;
+      if (allNewsItems.length === 0) {
+        clock.innerText = 'خطای اتصال';
+        document.getElementById('feedList').innerHTML = `
+          <div style="text-align:center;padding:50px 20px;color:var(--text-muted);">
+            <p>دریافت اخبار با تاخیر مواجه شد.</p>
+            <button class="btn-h" style="background:var(--accent);margin-top:12px;" onclick="manualSync()">تلاش مجدد 🔄</button>
+          </div>
+        `;
+      }
     }
 
     function renderFeedList() {
@@ -586,7 +558,6 @@
       loader.style.display = displayedCount < allNewsItems.length ? 'block' : 'none';
     }
 
-    // اسکرول بی‌نهایت پیوسته
     window.addEventListener('scroll', () => {
       if (currentScreen !== 'home' || displayedCount >= allNewsItems.length || isFetching) return;
 
@@ -596,7 +567,7 @@
           displayedCount += 10;
           renderFeedList();
           isFetching = false;
-        }, 150);
+        }, 100);
       }
     });
 
@@ -743,6 +714,7 @@
       });
     });
 
+    // شروع دریافت لحظه‌ای
     fetchLiveNews(currentCat);
   </script>
 </body>
