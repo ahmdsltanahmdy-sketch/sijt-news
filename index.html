@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="referrer" content="no-referrer">
-  <title>خبرگزاری میزان | پیشخوان لحظه‌ای</title>
+  <title>خبرگزاری میزان | پیشخوان هوشمند</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     :root {
@@ -183,8 +183,8 @@
       cursor: pointer;
     }
     .img-wrap {
-      width: 100px;
-      height: 84px;
+      width: 105px;
+      height: 85px;
       border-radius: 8px;
       overflow: hidden;
       flex-shrink: 0;
@@ -253,7 +253,6 @@
       color: var(--text-muted);
     }
 
-    /* مودال مطالعه خبر */
     .reader-modal {
       position: fixed;
       inset: 0;
@@ -469,14 +468,15 @@
       showToast(isDark ? 'تم قرمز میزان' : 'تم تاریک');
     }
 
-    // متد پایدار ساخت آدرس تصویر بدون تحریم و با سرعت لود بالا
+    // متد پایدار و قطعی لود تصویر با دور زدن بلاک ۴۰۳ هات‌لینک
     function getSafeImage(rawUrl) {
       if (!rawUrl) return null;
-      var u = rawUrl.trim();
+      let u = rawUrl.trim();
       if (u.indexOf('//') === 0) u = 'https:' + u;
       if (u.indexOf('http://') === 0) u = u.replace('http://', 'https://');
-      // پراکسی تصویر با فرمت فشرده برای باز شدن فوری
-      return `https://images.weserv.nl/?url=${encodeURIComponent(u)}&w=220&h=180&fit=cover&output=webp`;
+      
+      // استفاده از بهینه‌ساز معتبر بدون بلاک
+      return `https://images.weserv.nl/?url=${encodeURIComponent(u)}&w=260&h=200&fit=cover&output=webp`;
     }
 
     async function fetchLiveNews(cat, forceRefresh = false) {
@@ -505,7 +505,7 @@
           renderFeedList();
           const d = new Date();
           clock.innerText = `بروزرسانی: ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
-          if (forceRefresh) showToast('اخبار جدید دریافت شد');
+          if (forceRefresh) showToast('آخرین اخبار منتشرشده دریافت شد');
           return;
         }
       } catch (err) {
@@ -540,15 +540,14 @@
         const card = document.createElement('div');
         card.className = 'card-item';
         
-        var safeImg = getSafeImage(item.image);
+        const safeImg = getSafeImage(item.image);
 
         card.innerHTML = `
           <div class="card-touch" onclick="openReader('${encodeURIComponent(JSON.stringify(item))}')">
             <div class="img-wrap">
               ${safeImg ? 
-                `<img src="${safeImg}" alt="عکس خبر" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
-                 <span style="display:none;font-size:1.8rem;color:#a0aec0;">⚖️</span>` 
-                : `<span style="font-size:1.8rem;color:#a0aec0;">⚖️</span>`
+                `<img src="${safeImg}" alt="عکس خبر" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null; this.src='https://www.mizanonline.ir/files/fa/news/1403/6/17/3702170_870.jpg';" />` 
+                : `<span style="font-size:2rem;color:#a0aec0;">⚖️</span>`
               }
             </div>
             <div class="card-body">
@@ -593,7 +592,7 @@
       document.getElementById('readerText').innerText = currentReading.snippet;
 
       const imgEl = document.getElementById('readerImg');
-      var safeImg = getSafeImage(currentReading.image);
+      const safeImg = getSafeImage(currentReading.image);
       if (safeImg) {
         imgEl.src = safeImg;
         imgEl.style.display = 'block';
@@ -626,13 +625,13 @@
       loader.style.display = 'none';
 
       filtered.forEach(item => {
-        var safeImg = getSafeImage(item.image);
+        const safeImg = getSafeImage(item.image);
         const card = document.createElement('div');
         card.className = 'card-item';
         card.innerHTML = `
           <div class="card-touch" onclick="openReader('${encodeURIComponent(JSON.stringify(item))}')">
             <div class="img-wrap">
-              ${safeImg ? `<img src="${safeImg}" alt="عکس خبر" loading="lazy" />` : `<span>⚖️</span>`}
+              ${safeImg ? `<img src="${safeImg}" alt="عکس خبر" loading="lazy" />` : `<span style="font-size:2rem;color:#a0aec0;">⚖️</span>`}
             </div>
             <div class="card-body">
               <div class="card-title">${item.title}</div>
@@ -670,13 +669,13 @@
       }
 
       bookmarks.forEach(item => {
-        var safeImg = getSafeImage(item.image);
+        const safeImg = getSafeImage(item.image);
         const card = document.createElement('div');
         card.className = 'card-item';
         card.innerHTML = `
           <div class="card-touch" onclick="openReader('${encodeURIComponent(JSON.stringify(item))}')">
             <div class="img-wrap">
-              ${safeImg ? `<img src="${safeImg}" alt="عکس خبر" loading="lazy" />` : `<span>⚖️</span>`}
+              ${safeImg ? `<img src="${safeImg}" alt="عکس خبر" loading="lazy" />` : `<span style="font-size:2rem;color:#a0aec0;">⚖️</span>`}
             </div>
             <div class="card-body">
               <div class="card-title">${item.title}</div>
