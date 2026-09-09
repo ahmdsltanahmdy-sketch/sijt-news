@@ -1,8 +1,8 @@
 name: Update Mizan News
 on:
   schedule:
-    - cron: '*/10 * * * *' # اجرای خودکار هر 10 دقیقه
-  workflow_dispatch: # امکان اجرای دستی با یک کلیک
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -23,7 +23,7 @@ jobs:
           python -c '
           import requests
           import xml.etree.ElementTree as ET
-          import json, re, time
+          import json, re
           from bs4 import BeautifulSoup
 
           cats = {
@@ -40,34 +40,43 @@ jobs:
               "4": "https://www.mizanonline.ir/fa/rss/4"
           }
 
-          headers = {"User-Agent": "Mozilla/5.0"}
+          headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
           data_store = {}
 
           for k, url in cats.items():
               try:
-                  res = requests.get(url, headers=headers, timeout=10)
+                  res = requests.get(url, headers=headers, timeout=12)
                   root = ET.fromstring(res.content)
                   items = []
-                  for it in root.findall(".//item")[:35]:
+                  for it in root.findall(".//item")[:60]:
                       title = it.findtext("title", "").strip()
                       link = it.findtext("link", "").strip()
                       desc = it.findtext("description", "")
                       pub = it.findtext("pubDate", "")
-                      time_str = pub.split(" ")[4] if len(pub.split(" ")) > 4 else "تازه"
+                      
+                      time_parts = pub.split(" ")
+                      time_str = time_parts[4] if len(time_parts) > 4 else (time_parts[1] if len(time_parts) > 1 else "چند لحظه پیش")
 
-                      # استخراج تصویر
                       img = None
                       enc = it.find("enclosure")
                       if enc is not None and enc.get("url"):
                           img = enc.get("url")
+                      
                       if not img and desc:
-                          m = re.search(r"src=[\"\x27]([^\"]+\.(?:jpg|jpeg|png|webp))", desc)
+                          m = re.search(r"src=[\"\x27]([^\"]+\.(?:jpg|jpeg|png|webp))", desc, re.IGNORECASE)
                           if m:
                               img = m.group(1)
 
-                      # خلاصه متن
+                      if img:
+                          if img.startswith("//"):
+                              img = "https:" + img
+                          elif img.startswith("/"):
+                              img = "https://www.mizanonline.ir" + img
+                          elif img.startswith("http://"):
+                              img = img.replace("http://", "https://")
+
                       soup = BeautifulSoup(desc, "html.parser")
-                      snippet = soup.get_text()[:115].strip() + "..."
+                      snippet = soup.get_text()[:130].strip() + "..."
 
                       if title and link:
                           items.append({
@@ -90,5 +99,5 @@ jobs:
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
           git add news.json
-          git commit -m "Auto Update News [skip ci]" || exit 0
+          git commit -m "Live Sync News [skip ci]" || exit 0
           git push
