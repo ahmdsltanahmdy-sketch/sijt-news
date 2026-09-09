@@ -37,7 +37,7 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Vazirmatn", Tahoma, sans-serif;
       background-color: var(--bg);
       color: var(--text);
-      padding-bottom: 70px;
+      padding-bottom: 74px;
       user-select: none;
       min-height: 100vh;
       font-size: 13.5px;
@@ -220,10 +220,10 @@
       font-family: inherit;
     }
 
-    .infinite-indicator {
+    .scroll-loader {
       text-align: center;
-      padding: 12px;
-      font-size: 0.78rem;
+      padding: 16px;
+      font-size: 0.8rem;
       color: var(--text-muted);
     }
 
@@ -334,7 +334,7 @@
     <header class="top-header">
       <div>
         <div class="brand-title">خبرگزاری میزان</div>
-        <span class="brand-status" id="clock-status">درحال دریافت...</span>
+        <span class="brand-status" id="clock-status">آماده دریافت</span>
       </div>
       <div style="display:flex;gap:6px;">
         <button class="btn-h" onclick="manualSync()">🔄 تازه‌سازی</button>
@@ -344,7 +344,7 @@
 
     <nav class="tabs-bar">
       <div class="tabs-scroll">
-        <button class="tab-btn active" data-cat="allnews">📌 همه اخبار</button>
+        <button class="tab-btn active" data-cat="0">📌 همه اخبار</button>
         <button class="tab-btn" data-cat="17">⚖️ قضایی</button>
         <button class="tab-btn" data-cat="7">🕊️ حقوق بشر</button>
         <button class="tab-btn" data-cat="16">📖 مجله حقوقی</button>
@@ -366,9 +366,9 @@
     </div>
 
     <main class="feed-container" id="feedList">
-      <div style="text-align:center;padding:50px;color:var(--text-muted);">در حال دریافت جدیدترین اخبار...</div>
+      <div style="text-align:center;padding:50px;color:var(--text-muted);">در حال بارگذاری اخبار زنده...</div>
     </main>
-    <div class="infinite-indicator" id="scrollIndicator">در حال بارگذاری اخبار گذشته...</div>
+    <div class="scroll-loader" id="scrollLoader">در حال دریافت اخبار ساعات قبل...</div>
 
     <div class="reader-modal" id="readerModal">
       <div class="reader-header">
@@ -412,13 +412,14 @@
     const tg = window.Telegram.WebApp;
     if (tg) { tg.ready(); tg.expand(); }
 
-    let allNewsData = {};
-    let currentCat = 'allnews';
+    let currentCat = '0';
     let currentScreen = 'home';
-    let visibleCount = 10;
+    let currentPage = 1;
+    let allNewsItems = [];
     let isFetching = false;
+    let hasMore = true;
     let currentReading = null;
-    let bookmarks = JSON.parse(localStorage.getItem('mizan_bookmarks_app') || '[]');
+    let bookmarks = JSON.parse(localStorage.getItem('mizan_bookmarks_store') || '[]');
 
     function showToast(msg) {
       const t = document.getElementById('toastBox');
@@ -433,52 +434,128 @@
       showToast(isDark ? 'تم قرمز میزان' : 'تم تاریک');
     }
 
-    // واکشی بدون کش از مخزن
-    async function loadNews() {
-      const clock = document.getElementById('clock-status');
-      clock.innerText = 'همگام‌سازی...';
+    // تبدیل لینک تصویر به پروکسی سریع CDN برای باز شدن قطعی تمام تصاویر
+    function getSafeImage(rawUrl) {
+      if (!rawUrl) return null;
+      let u = rawUrl.trim();
+      if (u.startsWith('//')) u = 'https:' + u;
+      if (u.startsWith('/')) u = 'https://www.mizanonline.ir' + u;
+      if (u.startsWith('http://')) u = u.replace('http://', 'https://');
+      if (u.length < 15 || u.includes('pixel') || u.includes('clear.gif')) return null;
 
-      try {
-        const nocache = `_t=${Date.now()}&_r=${Math.random()}`;
-        const res = await fetch(`./news.json?${nocache}`, {
-          cache: 'no-store',
-          headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
-        });
-
-        if (res.ok) {
-          allNewsData = await res.json();
-          visibleCount = 10;
-          renderCategory(currentCat);
-          const d = new Date();
-          clock.innerText = `بروز شده: ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-          showToast('جدیدترین اخبار همگام شد');
-          return;
-        }
-      } catch (err) {}
-
-      document.getElementById('feedList').innerHTML = `
-        <div style="text-align:center;padding:50px 20px;color:var(--text-muted);">
-          <p>در حال همگام‌سازی منبع اخبار...</p>
-          <button class="btn-h" style="background:var(--accent);margin-top:10px;" onclick="loadNews()">تلاش مجدد 🔄</button>
-        </div>
-      `;
-      clock.innerText = 'خطای اتصال';
+      // دور زدن مسدودسازی هات‌لینک تصویر میزان با فرمت فشرده
+      return `https://images.weserv.nl/?url=${encodeURIComponent(u)}&w=220&h=180&fit=cover&output=webp`;
     }
 
-    function renderCategory(cat) {
-      const fullList = allNewsData[cat] || [];
+    // واکشی زنده صفحات آرشیو (بدون کش و با پشتیبانی از روزها و ساعات گذشته)
+    async function fetchArchiveStream(cat, page, isAppend = false) {
+      if (isFetching) return;
+      isFetching = true;
+
+      const clock = document.getElementById('clock-status');
+      const loader = document.getElementById('scrollLoader');
+      loader.style.display = 'block';
+
+      if (!isAppend) {
+        clock.innerText = 'در حال ارتباط مستقیم...';
+      }
+
+      // آدرس صفحه آرشیو خبرگزاری میزان
+      let target = `https://www.mizanonline.ir/fa/archive?pi=${page}&_t=${Date.now()}`;
+      if (cat !== '0') {
+        target = `https://www.mizanonline.ir/fa/archive?service_id=${cat}&pi=${page}&_t=${Date.now()}`;
+      }
+
+      // استفاده از پروکسی استریم خام
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}`;
+
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 6000);
+        const res = await fetch(proxyUrl, { signal: controller.signal, cache: 'no-store' });
+        clearTimeout(timer);
+
+        if (!res.ok) throw new Error("Network response was not ok");
+        const html = await res.text();
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+
+        // انتخاب کارت‌های خبری بر اساس ساختار صفحه آرشیو خبرگزاری میزان
+        const nodes = doc.querySelectorAll('.archive_news li, .news_box, .news, li.news_item, article, .item');
+        const parsed = [];
+
+        nodes.forEach(node => {
+          const a = node.querySelector('h3 a, h2 a, a.title, a');
+          if (!a) return;
+
+          const title = a.textContent.trim();
+          let link = a.getAttribute('href') || '';
+          if (link.startsWith('/')) link = 'https://www.mizanonline.ir' + link;
+
+          if (!title || title.length < 12 || !link.includes('/news/')) return;
+          if (allNewsItems.some(i => i.link === link)) return;
+
+          // استخراج تصویر
+          const imgTag = node.querySelector('img');
+          let rawImg = imgTag ? (imgTag.getAttribute('src') || imgTag.getAttribute('data-src') || imgTag.getAttribute('data-original')) : null;
+
+          const timeTag = node.querySelector('.date, .time, span.news_date, time');
+          const time = timeTag ? timeTag.textContent.trim() : 'ساعات قبل';
+
+          const leadTag = node.querySelector('p, .lead, .news_lead');
+          const snippet = leadTag ? leadTag.textContent.trim().slice(0, 125) + '...' : '';
+
+          parsed.push({
+            title,
+            link,
+            pubDate: time,
+            snippet,
+            image: getSafeImage(rawImg)
+          });
+        });
+
+        if (parsed.length > 0) {
+          if (isAppend) {
+            allNewsItems = allNewsItems.concat(parsed);
+          } else {
+            allNewsItems = parsed;
+          }
+          currentPage = page;
+          hasMore = true;
+          renderList(allNewsItems);
+
+          const now = new Date();
+          clock.innerText = `بروزرسانی: ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+          if (!isAppend) showToast('آخرین اخبار زنده دریافت شد');
+        } else {
+          hasMore = false;
+          loader.innerText = 'خبر دیگری در این بخش موجود نیست.';
+        }
+      } catch (err) {
+        if (!isAppend && allNewsItems.length === 0) {
+          document.getElementById('feedList').innerHTML = `
+            <div style="text-align:center;padding:50px 20px;color:var(--text-muted);">
+              <p>خطا در دریافت اخبار از خبرگزاری</p>
+              <button class="btn-h" style="background:var(--accent);margin-top:12px;" onclick="manualSync()">تلاش مجدد 🔄</button>
+            </div>
+          `;
+          clock.innerText = 'خطای ارتباط';
+        }
+      } finally {
+        isFetching = false;
+        if (hasMore) loader.innerText = 'در حال اسکرول به اخبار گذشته...';
+      }
+    }
+
+    function renderList(list) {
       const container = document.getElementById('feedList');
-      const indicator = document.getElementById('scrollIndicator');
       container.innerHTML = '';
 
-      if (fullList.length === 0) {
-        container.innerHTML = '<div style="text-align:center;padding:50px;color:var(--text-muted);">خبری یافت نشد.</div>';
-        indicator.style.display = 'none';
+      if (!list || list.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:50px;color:var(--text-muted);">خبری پیدا نشد.</div>';
         return;
       }
 
-      const itemsToShow = fullList.slice(0, visibleCount);
-      itemsToShow.forEach(item => {
+      list.forEach(item => {
         const isFav = bookmarks.some(b => b.link === item.link);
         const card = document.createElement('div');
         card.className = 'card-item';
@@ -486,7 +563,7 @@
           <div class="card-touch" onclick="openReader('${encodeURIComponent(JSON.stringify(item))}')">
             <div class="img-wrap">
               ${item.image ? 
-                `<img src="${item.image}" alt="عکس خبر" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+                `<img src="${item.image}" alt="عکس خبر" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
                  <span style="display:none;font-size:1.8rem;color:#a0aec0;">⚖️</span>` 
                 : `<span style="font-size:1.8rem;color:#a0aec0;">⚖️</span>`
               }
@@ -508,25 +585,14 @@
         `;
         container.appendChild(card);
       });
-
-      indicator.style.display = visibleCount < fullList.length ? 'block' : 'none';
     }
 
-    // اسکرول بی‌نهایت هوشمند
+    // اسکرول بی‌نهایت نامحدود (واکشی صفحات pi=2, pi=3, ...)
     window.addEventListener('scroll', () => {
-      if (currentScreen !== 'home') return;
-      const fullList = allNewsData[currentCat] || [];
-      if (visibleCount >= fullList.length) return;
+      if (currentScreen !== 'home' || !hasMore || isFetching) return;
 
-      if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 250) {
-        if (!isFetching) {
-          isFetching = true;
-          setTimeout(() => {
-            visibleCount += 10;
-            renderCategory(currentCat);
-            isFetching = false;
-          }, 250);
-        }
+      if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 350) {
+        fetchArchiveStream(currentCat, currentPage + 1, true);
       }
     });
 
@@ -556,33 +622,16 @@
     }
 
     function filterData(q) {
-      const list = allNewsData[currentCat] || [];
-      const indicator = document.getElementById('scrollIndicator');
+      const loader = document.getElementById('scrollLoader');
       if (!q || !q.trim()) {
-        visibleCount = 10;
-        renderCategory(currentCat);
+        renderList(allNewsItems);
+        loader.style.display = 'block';
         return;
       }
       const term = q.toLowerCase().trim();
-      const filtered = list.filter(i => i.title.toLowerCase().includes(term) || i.snippet.toLowerCase().includes(term));
-      
-      const container = document.getElementById('feedList');
-      container.innerHTML = '';
-      indicator.style.display = 'none';
-
-      filtered.forEach(item => {
-        const card = document.createElement('div');
-        card.className = 'card-item';
-        card.innerHTML = `
-          <div class="card-touch" onclick="openReader('${encodeURIComponent(JSON.stringify(item))}')">
-            <div class="card-body">
-              <div class="card-title">${item.title}</div>
-              <div class="card-lead">${item.snippet}</div>
-            </div>
-          </div>
-        `;
-        container.appendChild(card);
-      });
+      const filtered = allNewsItems.filter(i => i.title.toLowerCase().includes(term) || i.snippet.toLowerCase().includes(term));
+      renderList(filtered);
+      loader.style.display = 'none';
     }
 
     function toggleSave(enc) {
@@ -595,15 +644,15 @@
         bookmarks.push(item);
         showToast('به نشان‌شده‌ها اضافه شد');
       }
-      localStorage.setItem('mizan_bookmarks_app', JSON.stringify(bookmarks));
-      if (currentScreen === 'fav') renderBookmarks(); else renderCategory(currentCat);
+      localStorage.setItem('mizan_bookmarks_store', JSON.stringify(bookmarks));
+      if (currentScreen === 'fav') renderBookmarks(); else renderList(allNewsItems);
     }
 
     function renderBookmarks() {
       const container = document.getElementById('feedList');
-      const indicator = document.getElementById('scrollIndicator');
+      const loader = document.getElementById('scrollLoader');
       container.innerHTML = '';
-      indicator.style.display = 'none';
+      loader.style.display = 'none';
 
       if (bookmarks.length === 0) {
         container.innerHTML = '<div style="text-align:center;padding:60px;color:var(--text-muted);">هیچ خبری نشان نشده است.</div>';
@@ -634,22 +683,28 @@
       document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
       const tabs = document.querySelector('.tabs-bar');
       const tool = document.querySelector('.tool-bar');
+      const loader = document.getElementById('scrollLoader');
 
       if (s === 'home') {
         document.getElementById('btn-home').classList.add('active');
         tabs.style.display = 'block';
         tool.style.display = 'block';
-        renderCategory(currentCat);
+        loader.style.display = 'block';
+        renderList(allNewsItems);
       } else {
         document.getElementById('btn-fav').classList.add('active');
         tabs.style.display = 'none';
         tool.style.display = 'none';
+        loader.style.display = 'none';
         renderBookmarks();
       }
     }
 
     function manualSync() {
-      loadNews();
+      currentPage = 1;
+      allNewsItems = [];
+      hasMore = true;
+      fetchArchiveStream(currentCat, 1, false);
     }
 
     function openDirect(url) {
@@ -666,13 +721,15 @@
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         this.classList.add('active');
         currentCat = this.dataset.cat;
-        visibleCount = 10;
+        currentPage = 1;
+        allNewsItems = [];
+        hasMore = true;
         document.getElementById('searchInput').value = '';
-        renderCategory(currentCat);
+        fetchArchiveStream(currentCat, 1, false);
       });
     });
 
-    loadNews();
+    fetchArchiveStream(currentCat, 1, false);
   </script>
 </body>
 </html>
