@@ -37,7 +37,7 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Vazirmatn", Tahoma, sans-serif;
       background-color: var(--bg);
       color: var(--text);
-      padding-bottom: 74px;
+      padding-bottom: 70px;
       user-select: none;
       min-height: 100vh;
       font-size: 13.5px;
@@ -66,6 +66,7 @@
     }
     .brand-title { font-size: 1.05rem; font-weight: 800; }
     .brand-status { font-size: 0.65rem; opacity: 0.85; display: block; }
+    
     .btn-h {
       background: rgba(255, 255, 255, 0.2);
       border: 1px solid rgba(255, 255, 255, 0.3);
@@ -77,6 +78,7 @@
       font-family: inherit;
       font-weight: 600;
     }
+    .btn-h:active { transform: scale(0.95); }
 
     .tabs-bar {
       position: sticky;
@@ -110,16 +112,12 @@
       background: var(--accent-grad);
       color: #ffffff;
       border-color: transparent;
-      transform: translateY(-1px);
     }
 
     .tool-bar {
       padding: 8px 12px 2px 12px;
-      display: flex;
-      gap: 8px;
     }
     .search-wrap {
-      flex: 1;
       display: flex;
       align-items: center;
       background: var(--card-bg);
@@ -222,6 +220,67 @@
       font-family: inherit;
     }
 
+    .infinite-indicator {
+      text-align: center;
+      padding: 12px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    /* مودال مطالعه خبر */
+    .reader-modal {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 400;
+      display: none;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    .reader-modal.active { display: flex; }
+    .reader-header {
+      position: sticky;
+      top: 0;
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+    }
+    .reader-body {
+      padding: 16px;
+      max-width: 680px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .reader-img {
+      width: 100%;
+      max-height: 280px;
+      object-fit: cover;
+      border-radius: 10px;
+      margin-bottom: 14px;
+    }
+    .reader-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      line-height: 1.45;
+      margin-bottom: 10px;
+    }
+    .reader-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+      display: flex;
+      gap: 12px;
+    }
+    .reader-text {
+      font-size: 0.9rem;
+      line-height: 1.7;
+      color: var(--text);
+    }
+
     .bottom-nav {
       position: fixed;
       bottom: 0;
@@ -250,6 +309,23 @@
     }
     .nav-btn.active { color: var(--accent); font-weight: 700; }
     .nav-btn .icon { font-size: 1.15rem; }
+
+    .toast {
+      position: fixed;
+      bottom: 70px;
+      left: 50%;
+      transform: translateX(-50%) translateY(15px);
+      background: rgba(0, 0, 0, 0.85);
+      color: #fff;
+      padding: 6px 16px;
+      border-radius: 18px;
+      font-size: 0.75rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.2s;
+      z-index: 1000;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   </style>
 </head>
 <body data-theme="mizan-red">
@@ -260,7 +336,10 @@
         <div class="brand-title">خبرگزاری میزان</div>
         <span class="brand-status" id="clock-status">درحال دریافت...</span>
       </div>
-      <button class="btn-h" onclick="loadNews()">🔄 تازه‌سازی</button>
+      <div style="display:flex;gap:6px;">
+        <button class="btn-h" onclick="manualSync()">🔄 تازه‌سازی</button>
+        <button class="btn-h" onclick="toggleTheme()">🎨 تم</button>
+      </div>
     </header>
 
     <nav class="tabs-bar">
@@ -289,11 +368,38 @@
     <main class="feed-container" id="feedList">
       <div style="text-align:center;padding:50px;color:var(--text-muted);">در حال دریافت جدیدترین اخبار...</div>
     </main>
+    <div class="infinite-indicator" id="scrollIndicator">در حال بارگذاری اخبار گذشته...</div>
+
+    <div class="reader-modal" id="readerModal">
+      <div class="reader-header">
+        <button class="btn-h" style="background:var(--accent);color:#fff;" onclick="closeReader()">بازگشت ✕</button>
+        <button class="btn-h" style="background:transparent;color:var(--text);border-color:var(--border);" onclick="openExternalFromReader()">سایت اصلی ↗</button>
+      </div>
+      <div class="reader-body">
+        <img id="readerImg" class="reader-img" src="" alt="عکس خبر" onerror="this.style.display='none';" />
+        <h2 id="readerTitle" class="reader-title"></h2>
+        <div class="reader-meta">
+          <span id="readerDate"></span>
+          <span>خبرگزاری میزان</span>
+        </div>
+        <div id="readerText" class="reader-text"></div>
+      </div>
+    </div>
+
+    <div class="toast" id="toastBox">پیام</div>
 
     <footer class="bottom-nav">
-      <button class="nav-btn active" onclick="loadNews()">
+      <button class="nav-btn active" id="btn-home" onclick="setScreen('home')">
         <span class="icon">📰</span>
         <span>پیشخوان</span>
+      </button>
+      <button class="nav-btn" id="btn-fav" onclick="setScreen('fav')">
+        <span class="icon">⭐</span>
+        <span>نشان‌شده‌ها</span>
+      </button>
+      <button class="nav-btn" onclick="manualSync()">
+        <span class="icon">🔄</span>
+        <span>تازه‌سازی</span>
       </button>
       <button class="nav-btn" onclick="openDirect('https://www.mizanonline.ir/fa/archive')">
         <span class="icon">🌐</span>
@@ -308,47 +414,76 @@
 
     let allNewsData = {};
     let currentCat = 'allnews';
+    let currentScreen = 'home';
+    let visibleCount = 10;
+    let isFetching = false;
+    let currentReading = null;
+    let bookmarks = JSON.parse(localStorage.getItem('mizan_bookmarks_app') || '[]');
 
+    function showToast(msg) {
+      const t = document.getElementById('toastBox');
+      t.innerText = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2000);
+    }
+
+    function toggleTheme() {
+      const isDark = document.body.getAttribute('data-theme') === 'dark';
+      document.body.setAttribute('data-theme', isDark ? 'mizan-red' : 'dark');
+      showToast(isDark ? 'تم قرمز میزان' : 'تم تاریک');
+    }
+
+    // واکشی بدون کش از مخزن
     async function loadNews() {
       const clock = document.getElementById('clock-status');
       clock.innerText = 'همگام‌سازی...';
 
       try {
-        // خواندن مستقیم فایل جیسون ذخیره‌شده روی گیت‌هاب بدون نیاز به پروکسی خارجی
-        const res = await fetch(`./news.json?_t=${Date.now()}`);
+        const nocache = `_t=${Date.now()}&_r=${Math.random()}`;
+        const res = await fetch(`./news.json?${nocache}`, {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+        });
+
         if (res.ok) {
           allNewsData = await res.json();
+          visibleCount = 10;
           renderCategory(currentCat);
           const d = new Date();
           clock.innerText = `بروز شده: ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+          showToast('جدیدترین اخبار همگام شد');
           return;
         }
       } catch (err) {}
 
       document.getElementById('feedList').innerHTML = `
         <div style="text-align:center;padding:50px 20px;color:var(--text-muted);">
-          <p>در حال آماده‌سازی منبع اخبار...</p>
+          <p>در حال همگام‌سازی منبع اخبار...</p>
           <button class="btn-h" style="background:var(--accent);margin-top:10px;" onclick="loadNews()">تلاش مجدد 🔄</button>
         </div>
       `;
-      clock.innerText = 'خطا در ارتباط';
+      clock.innerText = 'خطای اتصال';
     }
 
     function renderCategory(cat) {
-      const list = allNewsData[cat] || [];
+      const fullList = allNewsData[cat] || [];
       const container = document.getElementById('feedList');
+      const indicator = document.getElementById('scrollIndicator');
       container.innerHTML = '';
 
-      if (list.length === 0) {
+      if (fullList.length === 0) {
         container.innerHTML = '<div style="text-align:center;padding:50px;color:var(--text-muted);">خبری یافت نشد.</div>';
+        indicator.style.display = 'none';
         return;
       }
 
-      list.forEach(item => {
+      const itemsToShow = fullList.slice(0, visibleCount);
+      itemsToShow.forEach(item => {
+        const isFav = bookmarks.some(b => b.link === item.link);
         const card = document.createElement('div');
         card.className = 'card-item';
         card.innerHTML = `
-          <div class="card-touch" onclick="openDirect('${item.link}')">
+          <div class="card-touch" onclick="openReader('${encodeURIComponent(JSON.stringify(item))}')">
             <div class="img-wrap">
               ${item.image ? 
                 `<img src="${item.image}" alt="عکس خبر" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
@@ -363,16 +498,68 @@
           </div>
           <div class="card-footer">
             <span>🕒 ${item.pubDate}</span>
-            <button class="act-btn" onclick="shareArticle('${item.title}', '${item.link}')">↗ اشتراک در تلگرام</button>
+            <div>
+              <button class="act-btn" onclick="toggleSave('${encodeURIComponent(JSON.stringify(item))}')">
+                ${isFav ? '★ نشان‌شده' : '☆ ذخیره'}
+              </button>
+              <button class="act-btn" onclick="shareArticle('${item.title}', '${item.link}')">↗ اشتراک</button>
+            </div>
           </div>
         `;
         container.appendChild(card);
       });
+
+      indicator.style.display = visibleCount < fullList.length ? 'block' : 'none';
+    }
+
+    // اسکرول بی‌نهایت هوشمند
+    window.addEventListener('scroll', () => {
+      if (currentScreen !== 'home') return;
+      const fullList = allNewsData[currentCat] || [];
+      if (visibleCount >= fullList.length) return;
+
+      if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 250) {
+        if (!isFetching) {
+          isFetching = true;
+          setTimeout(() => {
+            visibleCount += 10;
+            renderCategory(currentCat);
+            isFetching = false;
+          }, 250);
+        }
+      }
+    });
+
+    function openReader(enc) {
+      currentReading = JSON.parse(decodeURIComponent(enc));
+      const m = document.getElementById('readerModal');
+      document.getElementById('readerTitle').innerText = currentReading.title;
+      document.getElementById('readerDate').innerText = `🕒 ${currentReading.pubDate}`;
+      document.getElementById('readerText').innerText = currentReading.snippet;
+
+      const imgEl = document.getElementById('readerImg');
+      if (currentReading.image) {
+        imgEl.src = currentReading.image;
+        imgEl.style.display = 'block';
+      } else {
+        imgEl.style.display = 'none';
+      }
+      m.classList.add('active');
+    }
+
+    function closeReader() {
+      document.getElementById('readerModal').classList.remove('active');
+    }
+
+    function openExternalFromReader() {
+      if (currentReading && currentReading.link) openDirect(currentReading.link);
     }
 
     function filterData(q) {
       const list = allNewsData[currentCat] || [];
+      const indicator = document.getElementById('scrollIndicator');
       if (!q || !q.trim()) {
+        visibleCount = 10;
         renderCategory(currentCat);
         return;
       }
@@ -381,11 +568,13 @@
       
       const container = document.getElementById('feedList');
       container.innerHTML = '';
+      indicator.style.display = 'none';
+
       filtered.forEach(item => {
         const card = document.createElement('div');
         card.className = 'card-item';
         card.innerHTML = `
-          <div class="card-touch" onclick="openDirect('${item.link}')">
+          <div class="card-touch" onclick="openReader('${encodeURIComponent(JSON.stringify(item))}')">
             <div class="card-body">
               <div class="card-title">${item.title}</div>
               <div class="card-lead">${item.snippet}</div>
@@ -394,6 +583,73 @@
         `;
         container.appendChild(card);
       });
+    }
+
+    function toggleSave(enc) {
+      const item = JSON.parse(decodeURIComponent(enc));
+      const idx = bookmarks.findIndex(b => b.link === item.link);
+      if (idx > -1) {
+        bookmarks.splice(idx, 1);
+        showToast('از نشان‌شده‌ها حذف شد');
+      } else {
+        bookmarks.push(item);
+        showToast('به نشان‌شده‌ها اضافه شد');
+      }
+      localStorage.setItem('mizan_bookmarks_app', JSON.stringify(bookmarks));
+      if (currentScreen === 'fav') renderBookmarks(); else renderCategory(currentCat);
+    }
+
+    function renderBookmarks() {
+      const container = document.getElementById('feedList');
+      const indicator = document.getElementById('scrollIndicator');
+      container.innerHTML = '';
+      indicator.style.display = 'none';
+
+      if (bookmarks.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:60px;color:var(--text-muted);">هیچ خبری نشان نشده است.</div>';
+        return;
+      }
+
+      bookmarks.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'card-item';
+        card.innerHTML = `
+          <div class="card-touch" onclick="openReader('${encodeURIComponent(JSON.stringify(item))}')">
+            <div class="card-body">
+              <div class="card-title">${item.title}</div>
+              <div class="card-lead">${item.snippet}</div>
+            </div>
+          </div>
+          <div class="card-footer">
+            <span>🕒 ${item.pubDate}</span>
+            <button class="act-btn" style="color:var(--accent);" onclick="toggleSave('${encodeURIComponent(JSON.stringify(item))}')">🗑 حذف</button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function setScreen(s) {
+      currentScreen = s;
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      const tabs = document.querySelector('.tabs-bar');
+      const tool = document.querySelector('.tool-bar');
+
+      if (s === 'home') {
+        document.getElementById('btn-home').classList.add('active');
+        tabs.style.display = 'block';
+        tool.style.display = 'block';
+        renderCategory(currentCat);
+      } else {
+        document.getElementById('btn-fav').classList.add('active');
+        tabs.style.display = 'none';
+        tool.style.display = 'none';
+        renderBookmarks();
+      }
+    }
+
+    function manualSync() {
+      loadNews();
     }
 
     function openDirect(url) {
@@ -410,6 +666,7 @@
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         this.classList.add('active');
         currentCat = this.dataset.cat;
+        visibleCount = 10;
         document.getElementById('searchInput').value = '';
         renderCategory(currentCat);
       });
