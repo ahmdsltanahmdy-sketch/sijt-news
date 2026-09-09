@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <!-- رفع خطای Referrer برای نمایش تصاویر خبرگزاری بدون مسدودسازی سرور مبدا -->
+  <meta name="referrer" content="no-referrer">
+  <title>خبرگزاری میزان | پیشخوان هوشمند</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    /* تعریف پالت‌های رنگی بهینه */
+    :root[data-theme="mizan-red"] {
+      --bg-body: #f1f3f5;
+      --bg-surface: #ffffff;
+      --bg-header: #990000;
+      --text-main: #111827;
+      --text-muted: #6b7280;
+      --accent: #b91c1c;
+      --accent-grad: linear-gradient(135deg, #990000, #dc2626);
+      --border: #e5e7eb;
+      --card-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --badge-bg: rgba(185, 28, 28, 0.08);
+      --header-fg: #ffffff;
+    }
+
+    :root[data-theme="dark"] {
+      --bg-body: #0b111e;
+      --bg-surface: #151e2e;
+      --bg-header: #101726;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-grad: linear-gradient(135deg, #0284c7, #38bdf8);
+      --border: rgba(255, 255, 255, 0.08);
+      --card-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      --badge-bg: rgba(56, 189, 248, 0.12);
+      --header-fg: #f8fafc;
+    }
+
+    :root[data-theme="amoled"] {
+      --bg-body: #000000;
+      --bg-surface: #0a0a0a;
+      --bg-header: #000000;
+      --text-main: #ffffff;
+      --text-muted: #888888;
+      --accent: #ef4444;
+      --accent-grad: linear-gradient(135deg, #b91c1c, #ef4444);
+      --border: #222222;
+      --card-shadow: none;
+      --badge-bg: rgba(239, 68, 68, 0.15);
+      --header-fg: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Vazirmatn", Tahoma, sans-serif;
+      background-color: var(--bg-body);
+      color: var(--text-main);
+      padding-bottom: 74px;
+      user-select: none;
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.5;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    /* هدر ثابت */
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      background: var(--bg-header);
+      color: var(--header-fg);
+      padding: 10px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    }
+
+    .brand-title {
+      font-size: 1rem;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+    }
+
+    .brand-status {
+      font-size: 0.65rem;
+      opacity: 0.85;
+      display: block;
+    }
+
+    .header-ctrls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .h-btn {
+      background: rgba(255, 255, 255, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #fff;
+      padding: 5px 10px;
+      border-radius: 16px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .h-btn:active { transform: scale(0.95); }
+
+    /* تب‌های اسکرولی */
+    .tabs-wrapper {
+      position: sticky;
+      top: 50px;
+      z-index: 190;
+      background: var(--bg-body);
+      border-bottom: 1px solid var(--border);
+      padding: 6px 12px 8px 12px;
+    }
+
+    .tabs-flex {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .tabs-flex::-webkit-scrollbar { display: none; }
+
+    .tab-item {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 16px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s ease;
+    }
+
+    .tab-item.active {
+      background: var(--accent-grad);
+      color: #ffffff;
+      border-color: transparent;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      transform: translateY(-1px);
+    }
+
+    /* نوار ابزار (جستجو و مرتب‌سازی) */
+    .toolbar-wrapper {
+      padding: 8px 12px 2px 12px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .search-box {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px 10px;
+      gap: 6px;
+    }
+
+    .search-box input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.8rem;
+      width: 100%;
+    }
+
+    .sort-btn {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 10px;
+      padding: 0 10px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* لیست اخبار */
+    .news-feed {
+      padding: 10px 12px;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    .news-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 10px;
+      overflow: hidden;
+      box-shadow: var(--card-shadow);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-main {
+      display: flex;
+      padding: 10px;
+      gap: 10px;
+      cursor: pointer;
+    }
+
+    .thumb-box {
+      width: 96px;
+      height: 80px;
+      border-radius: 8px;
+      overflow: hidden;
+      flex-shrink: 0;
+      background: #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .thumb-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .thumb-alt {
+      display: none;
+      font-size: 1.8rem;
+      color: #9ca3af;
+    }
+
+    .card-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-width: 0;
+    }
+
+    .card-title {
+      font-size: 0.86rem;
+      font-weight: 700;
+      line-height: 1.38;
+      color: var(--text-main);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-bottom: 3px;
+    }
+
+    .card-lead {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .card-actions {
+      background: var(--badge-bg);
+      border-top: 1px solid var(--border);
+      padding: 6px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .btn-act {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.74rem;
+      padding: 3px 6px;
+      font-family: inherit;
+    }
+
+    .btn-act:active { color: var(--accent); }
+
+    /* دکمه بارگذاری صفحات قبل */
+    .load-more-wrap {
+      text-align: center;
+      padding: 8px 0 20px 0;
+    }
+
+    .load-more-btn {
+      background: var(--bg-surface);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-family: inherit;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .load-more-btn:active {
+      transform: scale(0.96);
+      background: var(--badge-bg);
+    }
+
+    /* نوار پایین */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 58px;
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      z-index: 300;
+    }
+
+    .nav-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      flex: 1;
+      font-family: inherit;
+    }
+
+    .nav-btn.active {
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .nav-btn .icon { font-size: 1.15rem; }
+
+    /* اسکلتون لودینگ */
+    .skeleton-box {
+      background: var(--bg-surface);
+      border-radius: 12px;
+      padding: 10px;
+      margin-bottom: 10px;
+      display: flex;
+      gap: 10px;
+      border: 1px solid var(--border);
+    }
+    .sk-thumb {
+      width: 96px;
+      height: 80px;
+      border-radius: 8px;
+      background: rgba(150, 150, 150, 0.15);
+      animation: pulse 1.2s infinite ease-in-out;
+    }
+    .sk-lines {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      justify-content: center;
+    }
+    .sk-line {
+      height: 10px;
+      border-radius: 5px;
+      background: rgba(150, 150, 150, 0.15);
+      animation: pulse 1.2s infinite ease-in-out;
+    }
+    @keyframes pulse { 0% { opacity: 0.3; } 50% { opacity: 0.7; } 100% { opacity: 0.3; } }
+
+    /* مودال تمام صفحه مطالعه خبر */
+    .reader-modal {
+      position: fixed;
+      inset: 0;
+      background: var(--bg-body);
+      z-index: 400;
+      display: none;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    .reader-modal.active { display: flex; }
+
+    .reader-header {
+      position: sticky;
+      top: 0;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+    }
+
+    .reader-body {
+      padding: 16px;
+      max-width: 680px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .reader-img {
+      width: 100%;
+      max-height: 280px;
+      object-fit: cover;
+      border-radius: 10px;
+      margin-bottom: 14px;
+    }
+
+    .reader-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      line-height: 1.45;
+      margin-bottom: 10px;
+    }
+
+    .reader-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+      display: flex;
+      gap: 12px;
+    }
+
+    .reader-lead {
+      font-size: 0.9rem;
+      line-height: 1.65;
+      color: var(--text-main);
+      margin-bottom: 20px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 70px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(0, 0, 0, 0.85);
+      color: #fff;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.2s ease;
+      z-index: 1000;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body data-theme="mizan-red">
+
+  <!-- هدر اپ -->
+  <header class="app-header">
+    <div>
+      <div class="brand-title">خبرگزاری میزان</div>
+      <span class="brand-status" id="status-clock">آماده</span>
+    </div>
+    <div class="header-ctrls">
+      <button class="h-btn" onclick="forceSync()">🔄 تازه‌سازی</button>
+      <button class="h-btn" onclick="rotateTheme()">🎨 <span id="lbl-theme">میزان</span></button>
+    </div>
+  </header>
+
+  <!-- تب‌های موضوعی -->
+  <nav class="tabs-wrapper" id="tabsBar">
+    <div class="tabs-flex">
+      <button class="tab-item active" data-cat="all">📌 همه اخبار</button>
+      <button class="tab-item" data-cat="judicial">⚖️ قضایی</button>
+      <button class="tab-item" data-cat="human_rights">🕊️ حقوق بشر</button>
+      <button class="tab-item" data-cat="law_magazine">📖 مجله حقوقی</button>
+      <button class="tab-item" data-cat="politics">🏛️ سیاست</button>
+      <button class="tab-item" data-cat="society">👥 جامعه</button>
+      <button class="tab-item" data-cat="culture">🎭 فرهنگی</button>
+      <button class="tab-item" data-cat="economy">📈 اقتصاد</button>
+      <button class="tab-item" data-cat="sports">⚽ ورزشی</button>
+      <button class="tab-item" data-cat="world">🌍 جهان</button>
+      <button class="tab-item" data-cat="photos">📸 عکس</button>
+    </div>
+  </nav>
+
+  <!-- نوار جستجو و فیلتر -->
+  <div class="toolbar-wrapper" id="toolBar">
+    <div class="search-box">
+      <span>🔍</span>
+      <input type="text" id="filterInput" placeholder="جستجوی آنی در اخبار..." oninput="handleSearch(this.value)" />
+    </div>
+    <button class="sort-btn" onclick="toggleSort()">
+      <span>⇅</span>
+      <span id="lbl-sort">جدیدترین</span>
+    </button>
+  </div>
+
+  <!-- لیست اخبار -->
+  <main class="news-feed" id="feedBox">
+    <div class="skeleton-box"><div class="sk-thumb"></div><div class="sk-lines"><div class="sk-line" style="width:85%;"></div><div class="sk-line" style="width:60%;"></div></div></div>
+    <div class="skeleton-box"><div class="sk-thumb"></div><div class="sk-lines"><div class="sk-line" style="width:75%;"></div><div class="sk-line" style="width:50%;"></div></div></div>
+  </main>
+
+  <!-- دکمه بارگذاری صفحات قبل -->
+  <div class="load-more-wrap" id="loadWrap" style="display:none;">
+    <button class="load-more-btn" id="loadMoreBtn" onclick="loadMoreNews()">
+      <span id="loadMoreText">مشاهده اخبار ساعات قبل 📥</span>
+    </button>
+  </div>
+
+  <!-- مودال مطالعه خبر داخل تلگرام -->
+  <div class="reader-modal" id="readerModal">
+    <div class="reader-header">
+      <button class="h-btn" style="background:var(--accent);color:#fff;" onclick="closeReader()">بازگشت ✕</button>
+      <button class="h-btn" style="background:transparent;color:var(--text-main);border-color:var(--border);" onclick="openExternalFromReader()">سایت اصلی ↗</button>
+    </div>
+    <div class="reader-body">
+      <img id="readerImg" class="reader-img" src="" alt="عکس خبر" onerror="this.style.display='none';" />
+      <h2 id="readerTitle" class="reader-title"></h2>
+      <div class="reader-meta">
+        <span id="readerDate"></span>
+        <span id="readerCat">خبرگزاری میزان</span>
+      </div>
+      <div id="readerText" class="reader-lead"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toastMsg">پیام</div>
+
+  <!-- نوار ناوبری پایین -->
+  <footer class="bottom-nav">
+    <button class="nav-btn active" id="btn-home" onclick="setScreen('home')">
+      <span class="icon">📰</span>
+      <span>پیشخوان</span>
+    </button>
+    <button class="nav-btn" id="btn-fav" onclick="setScreen('fav')">
+      <span class="icon">⭐</span>
+      <span>نشان‌شده‌ها</span>
+    </button>
+    <button class="nav-btn" onclick="forceSync()">
+      <span class="icon">🔄</span>
+      <span>تازه‌سازی</span>
+    </button>
+    <button class="nav-btn" onclick="openDirectLink('https://www.mizanonline.ir/fa/archive')">
+      <span class="icon">🌐</span>
+      <span>سایت اصلی</span>
+    </button>
+  </footer>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    if (tg) { tg.ready(); tg.expand(); }
+
+    const CATEGORIES = {
+      all: 0,
+      judicial: 17,
+      human_rights: 7,
+      law_magazine: 16,
+      politics: 10,
+      society: 9,
+      culture: 12,
+      economy: 11,
+      sports: 13,
+      world: 14,
+      photos: 4
+    };
+
+    const THEMES = ['mizan-red', 'dark', 'amoled'];
+    const THEME_LABELS = { 'mizan-red': 'میزان', 'dark': 'تاریک', 'amoled': 'مشکی' };
+
+    let currentTheme = localStorage.getItem('mizan_app_theme_v2') || 'mizan-red';
+    let activeCat = 'all';
+    let currentScreen = 'home';
+    let isSortAsc = false;
+    let cachedList = [];
+    let currentArticleReading = null;
+    let savedBookmarks = JSON.parse(localStorage.getItem('mizan_bookmarks_v2') || '[]');
+
+    function applyTheme(t) {
+      document.documentElement.setAttribute('data-theme', t);
+      localStorage.setItem('mizan_app_theme_v2', t);
+      document.getElementById('lbl-theme').innerText = THEME_LABELS[t] || t;
+    }
+
+    function rotateTheme() {
+      const idx = (THEMES.indexOf(currentTheme) + 1) % THEMES.length;
+      currentTheme = THEMES[idx];
+      applyTheme(currentTheme);
+      showToast(`تم ${THEME_LABELS[currentTheme]}`);
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toastMsg');
+      t.innerText = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2000);
+    }
+
+    function sanitizeSnippet(str) {
+      if (!str) return '';
+      const doc = new DOMParser().parseFromString(str, 'text/html');
+      return (doc.body.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 115) + '...';
+    }
+
+    // استخراج دقیق تصویر شاخص با رفع مشکل پروتکل
+    function parseImage(desc, itemXml) {
+      if (itemXml) {
+        const enc = itemXml.querySelector('enclosure');
+        if (enc && enc.getAttribute('url')) return enc.getAttribute('url');
+      }
+      if (desc) {
+        const m = desc.match(/src=["'](https?:\/\/[^"']+\.(?:jpg|jpeg|png|webp)[^"']*)["']/i);
+        if (m && m[1]) return m[1];
+      }
+      return null;
+    }
+
+    // متد بهینه دریافت زنده بدون معطلی و مسدودی
+    async function loadNewsStream(cat, isAppend = false) {
+      const clock = document.getElementById('status-clock');
+      const loadBtn = document.getElementById('loadMoreText');
+
+      if (!isAppend) {
+        // خواندن بلادرنگ از کش برای سرعت لحظه‌ای (زیر 0.1 ثانیه)
+        const localCache = localStorage.getItem(`cache_v2_${cat}`);
+        if (localCache) {
+          try {
+            cachedList = JSON.parse(localCache);
+            renderFeed(cachedList);
+            document.getElementById('loadWrap').style.display = 'block';
+          } catch(e) {}
+        } else {
+          document.getElementById('feedBox').innerHTML = `
+            <div class="skeleton-box"><div class="sk-thumb"></div><div class="sk-lines"><div class="sk-line" style="width:85%;"></div><div class="sk-line" style="width:60%;"></div></div></div>
+            <div class="skeleton-box"><div class="sk-thumb"></div><div class="sk-lines"><div class="sk-line" style="width:75%;"></div><div class="sk-line" style="width:50%;"></div></div></div>
+          `;
+        }
+        clock.innerText = 'همگام‌سازی...';
+      } else {
+        loadBtn.innerText = 'در حال دریافت...';
+      }
+
+      const sid = CATEGORIES[cat] || 0;
+      const rssEndpoint = sid === 0 
+        ? `https://www.mizanonline.ir/fa/rss/allnews?_t=${Date.now()}`
+        : `https://www.mizanonline.ir/fa/rss/${sid}?_t=${Date.now()}`;
+
+      // سیستم Race بین دو پروکسی پرسرعت جهت تضمین کمترین تاخیر زمانی
+      const p1 = `https://api.allorigins.win/raw?url=${encodeURIComponent(rssEndpoint)}`;
+      const p2 = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssEndpoint)}&_nocache=${Date.now()}`;
+
+      let freshItems = [];
+
+      try {
+        // تلاش اول: درخواست سریع AllOrigins
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3500);
+
+        const res = await fetch(p1, { signal: controller.signal });
+        clearTimeout(timeout);
+        const xmlText = await res.text();
+        const xmlDoc = new DOMParser().parseFromString(xmlText, 'text/xml');
+        const nodes = xmlDoc.querySelectorAll('item');
+
+        nodes.forEach(node => {
+          const title = node.querySelector('title')?.textContent?.trim() || '';
+          const link = node.querySelector('link')?.textContent?.trim() || '';
+          const desc = node.querySelector('description')?.textContent || '';
+          const pubDate = node.querySelector('pubDate')?.textContent || '';
+          const time = pubDate.split(' ')[4] || pubDate.split(' ')[1] || 'ساعات قبل';
+
+          if (title && link) {
+            freshItems.push({
+              title,
+              link,
+              pubDate: time,
+              snippet: sanitizeSnippet(desc),
+              image: parseImage(desc, node)
+            });
+          }
+        });
+      } catch (err) {
+        console.warn("Proxy 1 timeout, falling back to Proxy 2");
+      }
+
+      // تلاش دوم (پشتیبان)
+      if (freshItems.length === 0) {
+        try {
+          const r2 = await fetch(p2);
+          const d2 = await r2.json();
+          if (d2.status === 'ok' && d2.items) {
+            freshItems = d2.items.map(it => ({
+              title: it.title,
+              link: it.link,
+              pubDate: it.pubDate ? (it.pubDate.split(' ')[1] || it.pubDate) : 'ساعات قبل',
+              snippet: sanitizeSnippet(it.description),
+              image: parseImage(it.description, null) || it.thumbnail
+            }));
+          }
+        } catch(e) {}
+      }
+
+      if (freshItems.length > 0) {
+        if (isAppend) {
+          const newOnly = freshItems.filter(f => !cachedList.some(c => c.link === f.link));
+          cachedList = cachedList.concat(newOnly);
+          showToast(`اخبار به‌روزرسانی شد`);
+        } else {
+          cachedList = freshItems;
+          localStorage.setItem(`cache_v2_${cat}`, JSON.stringify(cachedList));
+        }
+
+        renderFeed(cachedList);
+        const now = new Date();
+        clock.innerText = `بروز شده: ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        document.getElementById('loadWrap').style.display = 'block';
+      } else if (!isAppend && cachedList.length === 0) {
+        document.getElementById('feedBox').innerHTML = '<div style="text-align:center; padding:50px; color:var(--text-muted);">خطا در دریافت اخبار. لطفاً دکمه تازه‌سازی را بزنید.</div>';
+        clock.innerText = 'خطا در شبکه';
+      }
+
+      loadBtn.innerText = 'مشاهده اخبار ساعات قبل 📥';
+    }
+
+    function renderFeed(list) {
+      const box = document.getElementById('feedBox');
+      box.innerHTML = '';
+
+      if (!list || list.length === 0) {
+        box.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-muted);">خبری پیدا نشد.</div>';
+        return;
+      }
+
+      list.forEach(item => {
+        const isFav = savedBookmarks.some(b => b.link === item.link);
+        const card = document.createElement('div');
+        card.className = 'news-card';
+        card.innerHTML = `
+          <div class="card-main" onclick="openReaderModal('${encodeURIComponent(JSON.stringify(item))}')">
+            <div class="thumb-box">
+              ${item.image ? 
+                `<img src="${item.image}" alt="عکس خبر" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+                 <span class="thumb-alt" style="display:none;">⚖️</span>`
+                : `<span class="thumb-alt" style="display:block;">⚖️</span>`
+              }
+            </div>
+            <div class="card-body">
+              <div class="card-title">${item.title}</div>
+              <div class="card-lead">${item.snippet}</div>
+            </div>
+          </div>
+          <div class="card-actions">
+            <span>🕒 ${item.pubDate}</span>
+            <div>
+              <button class="btn-act" onclick="toggleSave('${encodeURIComponent(JSON.stringify(item))}')">
+                ${isFav ? '★ نشان‌شده' : '☆ ذخیره'}
+              </button>
+              <button class="btn-act" onclick="shareArticle('${item.title}', '${item.link}')">
+                ↗ اشتراک
+              </button>
+            </div>
+          </div>
+        `;
+        box.appendChild(card);
+      });
+    }
+
+    // باز کردن خبر در حالت مودال مطالعه در تلگرام
+    function openReaderModal(enc) {
+      currentArticleReading = JSON.parse(decodeURIComponent(enc));
+      const m = document.getElementById('readerModal');
+      document.getElementById('readerTitle').innerText = currentArticleReading.title;
+      document.getElementById('readerDate').innerText = `🕒 ${currentArticleReading.pubDate}`;
+      document.getElementById('readerText').innerText = currentArticleReading.snippet;
+
+      const imgEl = document.getElementById('readerImg');
+      if (currentArticleReading.image) {
+        imgEl.src = currentArticleReading.image;
+        imgEl.style.display = 'block';
+      } else {
+        imgEl.style.display = 'none';
+      }
+
+      m.classList.add('active');
+    }
+
+    function closeReader() {
+      document.getElementById('readerModal').classList.remove('active');
+    }
+
+    function openExternalFromReader() {
+      if (currentArticleReading && currentArticleReading.link) {
+        openDirectLink(currentArticleReading.link);
+      }
+    }
+
+    function handleSearch(query) {
+      if (!query || query.trim() === '') {
+        renderFeed(cachedList);
+        document.getElementById('loadWrap').style.display = 'block';
+        return;
+      }
+      const q = query.toLowerCase().trim();
+      const filtered = cachedList.filter(i => i.title.toLowerCase().includes(q) || i.snippet.toLowerCase().includes(q));
+      renderFeed(filtered);
+      document.getElementById('loadWrap').style.display = 'none';
+    }
+
+    function toggleSort() {
+      isSortAsc = !isSortAsc;
+      document.getElementById('lbl-sort').innerText = isSortAsc ? 'قدیمی‌ترین' : 'جدیدترین';
+      cachedList.reverse();
+      renderFeed(cachedList);
+    }
+
+    function openDirectLink(url) {
+      if (tg && tg.openLink) { tg.openLink(url); } else { window.open(url, '_blank'); }
+    }
+
+    function shareArticle(title, url) {
+      const share = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`;
+      if (tg && tg.openTelegramLink) { tg.openTelegramLink(share); } else { window.open(share, '_blank'); }
+    }
+
+    function toggleSave(enc) {
+      const item = JSON.parse(decodeURIComponent(enc));
+      const idx = savedBookmarks.findIndex(b => b.link === item.link);
+      if (idx > -1) {
+        savedBookmarks.splice(idx, 1);
+        showToast('از نشان‌شده‌ها حذف شد');
+      } else {
+        savedBookmarks.push(item);
+        showToast('به نشان‌شده‌ها اضافه شد');
+      }
+      localStorage.setItem('mizan_bookmarks_v2', JSON.stringify(savedBookmarks));
+      if (currentScreen === 'fav') renderFavs(); else renderFeed(cachedList);
+    }
+
+    function renderFavs() {
+      const box = document.getElementById('feedBox');
+      box.innerHTML = '';
+      document.getElementById('loadWrap').style.display = 'none';
+      if (savedBookmarks.length === 0) {
+        box.innerHTML = '<div style="text-align:center; padding:60px; color:var(--text-muted);">هیچ خبری نشان نشده است.</div>';
+        return;
+      }
+      renderFeed(savedBookmarks);
+    }
+
+    function setScreen(s) {
+      currentScreen = s;
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      const tabs = document.getElementById('tabsBar');
+      const tool = document.getElementById('toolBar');
+
+      if (s === 'home') {
+        document.getElementById('btn-home').classList.add('active');
+        tabs.style.display = 'block';
+        tool.style.display = 'flex';
+        renderFeed(cachedList);
+        document.getElementById('loadWrap').style.display = 'block';
+      } else {
+        document.getElementById('btn-fav').classList.add('active');
+        tabs.style.display = 'none';
+        tool.style.display = 'none';
+        renderFavs();
+      }
+    }
+
+    function forceSync() {
+      showToast('همگام‌سازی سریع...');
+      loadNewsStream(activeCat, false);
+    }
+
+    function loadMoreNews() {
+      showToast('دریافت اخبار گذشته...');
+      loadNewsStream(activeCat, true);
+    }
+
+    // لیسنر تب‌ها
+    document.querySelectorAll('.tab-item').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.tab-item').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        activeCat = this.dataset.cat;
+        document.getElementById('filterInput').value = '';
+        this.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        loadNewsStream(activeCat, false);
+      });
+    });
+
+    // شروع
+    applyTheme(currentTheme);
+    loadNewsStream(activeCat, false);
+  </script>
+</body>
+</html>
