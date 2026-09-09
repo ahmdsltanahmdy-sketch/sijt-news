@@ -253,6 +253,7 @@
       color: var(--text-muted);
     }
 
+    /* مودال مطالعه خبر */
     .reader-modal {
       position: fixed;
       inset: 0;
@@ -358,7 +359,7 @@
   <div class="app-wrap">
     <div class="top-bar">
       <span>پایگاه رسمی اطلاع‌رسانی قوه قضائیه</span>
-      <span id="date-label">امروز</span>
+      <span>پیشخوان زنده</span>
     </div>
 
     <header class="header-main">
@@ -399,7 +400,7 @@
     </div>
 
     <main class="feed-container" id="feedList">
-      <div style="text-align:center;padding:50px;color:var(--text-muted);">در حال دریافت جدیدترین اخبار...</div>
+      <div style="text-align:center;padding:50px;color:var(--text-muted);">در حال بارگذاری اخبار زنده...</div>
     </main>
     <div class="scroll-loader" id="scrollLoader" style="display:none;">در حال اسکرول به اخبار گذشته...</div>
 
@@ -468,33 +469,43 @@
       showToast(isDark ? 'تم قرمز میزان' : 'تم تاریک');
     }
 
-    async function fetchLiveNews(cat) {
-      const clock = document.getElementById('clock-status');
-      clock.innerText = 'همگام‌سازی...';
+    // متد پایدار ساخت آدرس تصویر بدون تحریم و با سرعت لود بالا
+    function getSafeImage(rawUrl) {
+      if (!rawUrl) return null;
+      var u = rawUrl.trim();
+      if (u.indexOf('//') === 0) u = 'https:' + u;
+      if (u.indexOf('http://') === 0) u = u.replace('http://', 'https://');
+      // پراکسی تصویر با فرمت فشرده برای باز شدن فوری
+      return `https://images.weserv.nl/?url=${encodeURIComponent(u)}&w=220&h=180&fit=cover&output=webp`;
+    }
 
-      // نمایش کش قبلی برای لود آنی بدون انتظار کاربر
-      const cached = localStorage.getItem(`cache_${cat}`);
-      if (cached && allNewsItems.length === 0) {
-        try {
-          allNewsItems = JSON.parse(cached);
-          renderFeedList();
-        } catch(e) {}
+    async function fetchLiveNews(cat, forceRefresh = false) {
+      const clock = document.getElementById('clock-status');
+      clock.innerText = 'همگام‌سازی لحظه‌ای...';
+
+      if (!forceRefresh) {
+        const cached = localStorage.getItem(`mizan_cache_${cat}`);
+        if (cached && allNewsItems.length === 0) {
+          try {
+            allNewsItems = JSON.parse(cached);
+            renderFeedList();
+          } catch(e) {}
+        }
       }
 
       try {
-        // جلوگیری از کش مرورگر با شناسه میلی‌ثانیه‌ای رندوم
-        const fetchUrl = `${GOOGLE_SCRIPT_URL}?cat=${cat}&_t=${Date.now()}&_r=${Math.random()}`;
+        const fetchUrl = `${GOOGLE_SCRIPT_URL}?cat=${cat}&_t=${Date.now()}&_rnd=${Math.random()}`;
         const res = await fetch(fetchUrl, { cache: 'no-store' });
         const data = await res.json();
 
         if (data && data.status === "ok" && data.items && data.items.length > 0) {
           allNewsItems = data.items;
-          localStorage.setItem(`cache_${cat}`, JSON.stringify(allNewsItems));
+          localStorage.setItem(`mizan_cache_${cat}`, JSON.stringify(allNewsItems));
           displayedCount = 10;
           renderFeedList();
           const d = new Date();
           clock.innerText = `بروزرسانی: ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
-          showToast('اخبار زنده همگام شد');
+          if (forceRefresh) showToast('اخبار جدید دریافت شد');
           return;
         }
       } catch (err) {
@@ -505,7 +516,7 @@
         clock.innerText = 'خطای اتصال';
         document.getElementById('feedList').innerHTML = `
           <div style="text-align:center;padding:50px 20px;color:var(--text-muted);">
-            <p>دریافت اخبار با تاخیر مواجه شد.</p>
+            <p>دریافت اخبار با خطا مواجه شد.</p>
             <button class="btn-h" style="background:var(--accent);margin-top:12px;" onclick="manualSync()">تلاش مجدد 🔄</button>
           </div>
         `;
@@ -528,11 +539,14 @@
         const isFav = bookmarks.some(b => b.link === item.link);
         const card = document.createElement('div');
         card.className = 'card-item';
+        
+        var safeImg = getSafeImage(item.image);
+
         card.innerHTML = `
           <div class="card-touch" onclick="openReader('${encodeURIComponent(JSON.stringify(item))}')">
             <div class="img-wrap">
-              ${item.image ? 
-                `<img src="${item.image}" alt="عکس خبر" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+              ${safeImg ? 
+                `<img src="${safeImg}" alt="عکس خبر" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
                  <span style="display:none;font-size:1.8rem;color:#a0aec0;">⚖️</span>` 
                 : `<span style="font-size:1.8rem;color:#a0aec0;">⚖️</span>`
               }
@@ -567,7 +581,7 @@
           displayedCount += 10;
           renderFeedList();
           isFetching = false;
-        }, 100);
+        }, 80);
       }
     });
 
@@ -579,8 +593,9 @@
       document.getElementById('readerText').innerText = currentReading.snippet;
 
       const imgEl = document.getElementById('readerImg');
-      if (currentReading.image) {
-        imgEl.src = currentReading.image;
+      var safeImg = getSafeImage(currentReading.image);
+      if (safeImg) {
+        imgEl.src = safeImg;
         imgEl.style.display = 'block';
       } else {
         imgEl.style.display = 'none';
@@ -611,10 +626,14 @@
       loader.style.display = 'none';
 
       filtered.forEach(item => {
+        var safeImg = getSafeImage(item.image);
         const card = document.createElement('div');
         card.className = 'card-item';
         card.innerHTML = `
           <div class="card-touch" onclick="openReader('${encodeURIComponent(JSON.stringify(item))}')">
+            <div class="img-wrap">
+              ${safeImg ? `<img src="${safeImg}" alt="عکس خبر" loading="lazy" />` : `<span>⚖️</span>`}
+            </div>
             <div class="card-body">
               <div class="card-title">${item.title}</div>
               <div class="card-lead">${item.snippet}</div>
@@ -651,10 +670,14 @@
       }
 
       bookmarks.forEach(item => {
+        var safeImg = getSafeImage(item.image);
         const card = document.createElement('div');
         card.className = 'card-item';
         card.innerHTML = `
           <div class="card-touch" onclick="openReader('${encodeURIComponent(JSON.stringify(item))}')">
+            <div class="img-wrap">
+              ${safeImg ? `<img src="${safeImg}" alt="عکس خبر" loading="lazy" />` : `<span>⚖️</span>`}
+            </div>
             <div class="card-body">
               <div class="card-title">${item.title}</div>
               <div class="card-lead">${item.snippet}</div>
@@ -691,7 +714,7 @@
     }
 
     function manualSync() {
-      fetchLiveNews(currentCat);
+      fetchLiveNews(currentCat, true);
     }
 
     function openDirect(url) {
@@ -714,7 +737,6 @@
       });
     });
 
-    // شروع دریافت لحظه‌ای
     fetchLiveNews(currentCat);
   </script>
 </body>
